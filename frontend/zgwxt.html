@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <!-- 设置视口，确保在不同设备上正确缩放 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>质构文析台 - 智能文档信息提取平台</title>
+    
+    <!-- 引入外部依赖库 -->
+    <!-- PDF.js: 用于在前端渲染和预览 PDF 文件 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <!-- Tesseract.js: 前端 OCR 库 (备用或辅助使用) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.0.2/tesseract.min.js"></script>
+    <!-- docx: 用于在前端生成 Word 文档导出 -->
+    <script src="https://unpkg.com/docx@7.8.2/build/index.js"></script>
+    <!-- jsPDF: 用于在前端生成 PDF 文档导出 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <!-- 引入 Font Awesome 图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- 引入自定义样式表 -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1><img src="icon/icon.jpg" alt="logo" style="height: 50px; vertical-align: middle; margin-right: 10px;">质构文析台</h1>
+        
+
+        <!-- 顶部导航标签切换区 -->
+        <div class="tab">
+            <button class="tab-btn active" data-tab="upload"><i class="fas fa-cloud-upload-alt"></i> 文档上传</button>
+            <!-- 智能配置和手动配置标签默认隐藏，根据用户选择的处理模式动态显示 -->
+            <button class="tab-btn" data-tab="config_nl" id="tabConfigNl" style="display: none;"><i class="fas fa-magic"></i> 智能配置</button>
+            <button class="tab-btn" data-tab="config_manual" id="tabConfigManual" style="display: none;"><i class="fas fa-sliders-h"></i> 手动配置</button>
+            <button class="tab-btn" data-tab="result"><i class="fas fa-poll"></i> 提取结果</button>
+        </div>
+
+        <!-- ==================== 1. 文档上传与设置区 ==================== -->
+        <div class="tab-content active" id="upload">
+            <h3><i class="fas fa-file-import"></i> 文档上传与识别</h3>
+            
+            <div class="form-item">
+                <label for="ocrModelSelect"><i class="fas fa-microchip"></i> 识别引擎：</label>
+                <select id="ocrModelSelect" title="选择OCR识别模型">
+                    <option value="paddle">基础本地引擎 (免费/较慢)</option>
+                    <option value="baidu">高级云端引擎 (付费/极速)</option>
+                </select>
+            </div>
+
+            <div class="form-item">
+                <label><i class="fas fa-cogs"></i> 处理模式：</label>
+                <div class="flex-gap-20">
+                    <label class="font-normal cursor-pointer" style="display: flex; align-items: center; gap: 8px;">
+                        <input type="radio" name="processMode" value="ocr_only" checked title="仅识别文字" onchange="toggleExtractOptions()">
+                        <span>仅文本识别</span>
+                    </label>
+                    <label class="font-normal cursor-pointer" style="display: flex; align-items: center; gap: 8px;">
+                        <input type="radio" name="processMode" value="ocr_and_extract" title="识别并提取信息" onchange="toggleExtractOptions()">
+                        <span>智能信息提取</span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- 提取配置方式选择 (仅在选择提取时显示) -->
+            <div id="extractOptionsArea" class="form-item hidden" style="padding-left: 24px; border-left: 3px solid var(--primary-color);">
+                <label style="display: block; margin-bottom: 12px;"><i class="fas fa-project-diagram"></i> 提取配置方式：</label>
+                <div style="display: flex; flex-direction: column; gap: 16px; text-align: left;">
+                    <label class="font-normal cursor-pointer" style="display: flex; align-items: flex-start; margin: 0;">
+                        <input type="radio" name="configMode" value="nl" checked style="margin-top: 4px; margin-right: 12px;">
+                        <div>
+                            <div style="line-height: 1.4; font-weight: 500;">AI 智能语义配置</div>
+                            <div class="text-gray font-size-12" style="margin-top: 4px; line-height: 1.5;">使用自然语言描述需求，系统将自动解析并生成提取规则。适合非结构化或复杂需求。</div>
+                        </div>
+                    </label>
+                    <label class="font-normal cursor-pointer" style="display: flex; align-items: flex-start; margin: 0;">
+                        <input type="radio" name="configMode" value="manual" style="margin-top: 4px; margin-right: 12px;">
+                        <div>
+                            <div style="line-height: 1.4; font-weight: 500;">结构化手动配置</div>
+                            <div class="text-gray font-size-12" style="margin-top: 4px; line-height: 1.5;">直接定义目标字段名称及属性。适合已有明确数据结构规范的场景。</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- 上传区域 -->
+            <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                <i class="fas fa-inbox"></i>
+                <p style="font-size: 16px; font-weight: 500; color: var(--text-main);">点击或拖拽文件至此区域上传</p>
+                <p class="text-gray font-size-12" style="margin-top: 8px;">支持 PDF, JPG, PNG, BMP 格式 (最大 50MB)</p>
+                <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png,.bmp" onchange="handleFileUpload()" hidden title="上传文件">
+            </div>
+            
+            <!-- 文档预览区 -->
+            <div class="preview-area" id="previewArea">
+                <p class="text-center text-gray" id="previewTip" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 12px;">
+                    <i class="fas fa-file-image" style="font-size: 48px; opacity: 0.5;"></i>
+                    <span>文档预览区域</span>
+                </p>
+            </div>
+            
+            <div class="flex-gap-10 flex-center flex-wrap mt-20">
+                <button class="btn btn-primary font-size-18 padding-12-40 hidden" onclick="confirmAndProcess()" id="confirmBtn" style="box-shadow: var(--shadow-md);"><i class="fas fa-play-circle"></i> 启动分析流程</button>
+            </div>
+            
+            <!-- 进度条 -->
+            <div id="extractProgress" class="hidden mt-20">
+                <div class="progress-bar">
+                    <div class="progress-bar-fill" id="progressFill" style="width: 0%;"></div>
+                </div>
+                <p id="progressText" class="text-center text-gray">准备中...</p>
+                <div id="ocrLogArea" class="api-test-result hidden" style="margin-top: 10px; max-height: 150px; overflow-y: auto; font-size: 12px; color: #666; background: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #eee; text-align: left;"></div>
+            </div>
+        </div>
+
+        <!-- ==================== 2A. 智能语义配置区 (自然语言) ==================== -->
+        <div class="tab-content" id="config_nl">
+            <h3><i class="fas fa-brain"></i> 智能语义配置</h3>
+            
+            <div class="free-extract-config">
+                <h4><i class="fas fa-terminal"></i> 需求描述指令：</h4>
+                <textarea id="freeExtractPrompt" placeholder="请输入提取需求，例如：&#10;提取合同中的甲方名称、乙方名称、合同总金额及签订日期。&#10;提取发票号码、开票日期、购销双方名称及价税合计金额。"></textarea>
+                
+                <div class="flex-gap-10 mt-15">
+                    <button class="btn btn-primary" onclick="parseFreePrompt()"><i class="fas fa-bolt"></i> 智能解析需求</button>
+                    <button class="btn btn-dark" onclick="clearFreePrompt()"><i class="fas fa-undo"></i> 重置</button>
+                </div>
+            </div>
+            
+            <div id="parsedFieldsArea" class="hidden">
+                <h4><i class="fas fa-tasks"></i> 解析结果确认：</h4>
+                <p class="text-gray font-size-12 mb-10">请核对系统生成的提取规则。您可直接在表格中微调，或修改上方指令重新解析。</p>
+                
+                <table class="field-table">
+                    <thead>
+                        <tr>
+                            <th>序号</th>
+                            <th>字段名称</th>
+                            <th>字段描述</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="nlFieldTableBody"></tbody>
+                </table>
+                
+                <div class="mt-30 text-center border-top-eee pt-20">
+                    <button class="btn btn-success font-size-18 padding-12-30" onclick="extractFieldsOnly()" style="box-shadow: var(--shadow-md);"><i class="fas fa-check-circle"></i> 应用规则并执行提取</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 2B. 手动结构化规则配置区 ==================== -->
+        <div class="tab-content" id="config_manual">
+            <h3><i class="fas fa-sliders-h"></i> 结构化规则配置</h3>
+            
+            <div class="form-item">
+                <label for="fieldName">字段名称：</label>
+                <input type="text" id="fieldName" placeholder="如：甲方名称、合同金额、身份证号" title="输入要提取的字段名称">
+                <label for="fieldType">字段类型：</label>
+                <select id="fieldType" title="选择字段的数据类型">
+                    <option value="text">文本</option>
+                    <option value="number">数字</option>
+                    <option value="date">日期</option>
+                    <option value="idcard">身份证号</option>
+                    <option value="phone">手机号</option>
+                    <option value="email">邮箱</option>
+                    <option value="money">金额</option>
+                    <option value="address">地址</option>
+                </select>
+                <label for="maxLength">最大长度：</label>
+                <input type="number" id="maxLength" placeholder="无限制填0" value="0" min="0" max="500" title="设置提取结果的最大字符长度">
+                <button class="btn btn-primary" onclick="addField()"><i class="fas fa-plus"></i> 新增字段</button>
+            </div>
+            <div class="form-item">
+                <label for="regexRule">正则校验规则：</label>
+                <input type="text" id="regexRule" placeholder="如：身份证^\d{17}[\dXx]$、手机号^1[3-9]\d{9}$" title="输入用于校验提取结果的正则表达式">
+                <span class="text-gray">提示：字段新增后可单独编辑正则</span>
+            </div>
+            
+            <!-- 字段配置表格 -->
+            <table class="field-table">
+                <thead>
+                    <tr>
+                        <th>序号</th>
+                        <th>字段名称</th>
+                        <th>字段类型</th>
+                        <th>最大长度</th>
+                        <th>正则规则</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="fieldTableBody"></tbody>
+            </table>
+            
+            <div class="flex-gap-10 flex-wrap mt-20">
+                <button class="btn btn-primary" onclick="saveFieldConfig()"><i class="fas fa-save"></i> 保存规则</button>
+                <button class="btn btn-dark" onclick="clearFieldConfig()"><i class="fas fa-trash-alt"></i> 清空规则</button>
+                <button class="btn btn-info" onclick="loadSampleConfig()"><i class="fas fa-bookmark"></i> 加载模板</button>
+                <button class="btn btn-warning" onclick="exportFieldConfig()"><i class="fas fa-download"></i> 导出规则</button>
+                <button class="btn btn-success" onclick="document.getElementById('importConfigInput').click()"><i class="fas fa-upload"></i> 导入规则</button>
+                <input type="file" id="importConfigInput" accept=".json" style="display: none;" onchange="importFieldConfig(event)">
+            </div>
+            
+            <div class="mt-30 text-center border-top-eee pt-20">
+                <button class="btn btn-success font-size-18 padding-12-30" onclick="extractFieldsOnly()" style="box-shadow: var(--shadow-md);"><i class="fas fa-play"></i> 应用规则并执行提取</button>
+            </div>
+        </div>
+
+        <!-- ==================== 3. 提取结果展示区 ==================== -->
+        <div class="tab-content" id="result">
+            <h3><i class="fas fa-chart-bar"></i> 分析报告</h3>
+            
+            <div class="flex-column flex-gap-20">
+                <!-- 上方：带红框的原图 -->
+                <div class="border-ddd radius-8 bg-f8f9fa overflow-auto h-70vh pos-relative" id="resultPreviewArea">
+                    <p class="text-center text-gray" id="resultPreviewTip" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 12px;">
+                        <i class="fas fa-layer-group" style="font-size: 48px; opacity: 0.5;"></i>
+                        <span>可视化分析视图</span>
+                    </p>
+                </div>
+                
+                <!-- 下方：提取出的文字 -->
+                <div class="flex-column">
+                    <div class="flex-gap-10 mt-20" style="margin-bottom: 15px; justify-content: space-between; align-items: center;">
+                        <div class="flex-gap-10">
+                            <button class="btn btn-primary" onclick="exportResults()"><i class="fas fa-code"></i> JSON</button>
+                            <button class="btn btn-success" onclick="exportResultsCSV()"><i class="fas fa-file-csv"></i> CSV</button>
+                            <button class="btn btn-info" onclick="exportResultsDocx()"><i class="fas fa-file-word"></i> Word</button>
+                            <button class="btn btn-dark" onclick="exportResultsMarkdown()"><i class="fab fa-markdown"></i> Markdown</button>
+                            <button class="btn btn-danger" onclick="exportResultsPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
+                            <button class="btn btn-warning" onclick="copyResults()"><i class="fas fa-copy"></i> 复制</button>
+                        </div>
+                        <div id="displayModeToggle" class="hidden">
+                            <button class="btn btn-dark" onclick="toggleResultDisplay()" id="toggleDisplayBtn"><i class="fas fa-filter"></i> 视图切换</button>
+                        </div>
+                    </div>
+
+                    <div id="resultTableContainer">
+                        <table class="result-table mt-0" id="resultTable">
+                            <thead>
+                                <tr>
+                                    <th>字段名称</th>
+                                    <th>提取值</th>
+                                    <th class="validation-col">校验结果</th>
+                                    <th class="action-col">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resultTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入主逻辑脚本，放在 body 底部确保 DOM 加载完成 -->
+    <script src="js/main.js"></script>
+</body>
+</html>
