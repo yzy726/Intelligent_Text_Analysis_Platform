@@ -1,0 +1,32 @@
+# ---- Web 框架 ----
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+pydantic-settings
+
+# ---- PDF 与图像处理 ----
+PyMuPDF          # 用于解析PDF文件
+reportlab        # 用于生成PDF文件
+Pillow           # 用于处理图像
+
+# ---- 大语言模型交互 ----
+openai           # 用于调用所有兼容OpenAI API的大模型服务
+
+# ---- OCR 引擎 (按需安装) ----
+
+# 本地：
+# 选项1: EasyOCR (推荐, 跨平台兼容性好)
+easyocr
+torch            # easyocr 依赖 torch
+numpy
+
+# 选项2: PaddleOCR (性能强, Windows下配置可能稍复杂)
+# paddlepaddle
+# paddlex
+# opencv-python-headless
+# 具体安装步骤请看README.md
+
+#在线：
+# 选项3: 百度云 OCR API
+requests         # 用于调用百度API
